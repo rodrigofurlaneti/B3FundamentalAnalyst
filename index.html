@@ -1,1 +1,645 @@
-<h1>test</h1>
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Analisador Fundamentalista B3</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"/>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;700&family=DM+Sans:wght@400;600;700;800&display=swap" rel="stylesheet"/>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  :root {
+    --bg:      #04080f;
+    --bg2:     #060e1a;
+    --bg3:     #0a1525;
+    --border:  #0d1f33;
+    --text:    #c8d8e8;
+    --text2:   #5a7a9a;
+    --text3:   #1e3d5a;
+    --blue:    #1565c0;
+    --blue2:   #5a9fd4;
+    --green:   #00e676;
+    --yellow:  #ffd740;
+    --red:     #ff5252;
+    --mono:    'IBM Plex Mono', monospace;
+    --sans:    'DM Sans', system-ui, sans-serif;
+  }
+  html, body { background: var(--bg); color: var(--text); font-family: var(--sans); min-height: 100vh; }
+  ::-webkit-scrollbar { width: 5px; }
+  ::-webkit-scrollbar-track { background: var(--bg); }
+  ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+
+  /* ── HEADER ── */
+  header {
+    background: linear-gradient(180deg,#060f1e,var(--bg));
+    border-bottom: 1px solid var(--border);
+    padding: 22px 28px;
+    display: flex; align-items: center; gap: 14px;
+  }
+  .logo-box {
+    width: 46px; height: 46px; border-radius: 14px; flex-shrink: 0;
+    background: linear-gradient(135deg,#0d47a1,#1976d2);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 24px; box-shadow: 0 0 22px #1565c040;
+  }
+  header h1 { font-family: var(--mono); font-size: 18px; color: #deeeff; letter-spacing: 1px; }
+  header p  { font-size: 12px; color: var(--text3); margin-top: 3px; }
+  header strong { color: var(--blue2); }
+
+  /* ── MAIN ── */
+  main { max-width: 1140px; margin: 0 auto; padding: 22px 18px 60px; }
+
+  /* ── CARD BASE ── */
+  .panel {
+    background: var(--bg2); border-radius: 16px; padding: 20px 22px;
+    border: 1px solid var(--border); margin-bottom: 16px;
+  }
+  .panel-title { font-size: 13px; font-weight: 700; color: var(--blue2); margin-bottom: 14px; }
+
+  /* ── TAGS ── */
+  .tags { display: flex; flex-wrap: wrap; gap: 7px; margin-bottom: 14px; }
+  .tag {
+    display: flex; align-items: center; gap: 5px;
+    background: var(--bg3); border-radius: 8px; padding: 4px 10px;
+    border: 1px solid #1a3050; font-size: 12px;
+    font-family: var(--mono); color: var(--blue2);
+  }
+  .tag-x { cursor: pointer; color: var(--text3); font-size: 16px; line-height: 1; margin-left: 2px; }
+  .tag-x:hover { color: var(--red); }
+
+  /* ── INPUTS ── */
+  .row { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; }
+  input[type=text] {
+    background: var(--bg); border: 1px solid #1a3050; border-radius: 10px;
+    color: var(--text); padding: 9px 14px; font-size: 13px;
+    font-family: var(--mono); width: 220px; outline: none;
+  }
+  input[type=text]:focus { border-color: var(--blue); }
+  input[type=range] { accent-color: var(--blue); width: 100%; }
+  select {
+    background: var(--bg); border: 1px solid #1a3050; border-radius: 8px;
+    color: var(--text); padding: 8px 12px; font-size: 13px; cursor: pointer; outline: none;
+  }
+
+  /* ── BUTTONS ── */
+  .btn { border: none; border-radius: 10px; cursor: pointer; font-weight: 700; font-size: 14px; padding: 9px 18px; transition: all .2s; }
+  .btn-add { background: #0d47a1; color: #deeeff; }
+  .btn-add:hover { background: #1565c0; }
+  .btn-run {
+    background: linear-gradient(135deg,#0d47a1,#1565c0);
+    color: #fff; font-size: 15px; font-weight: 800; padding: 10px 24px;
+    box-shadow: 0 0 18px #1565c050;
+  }
+  .btn-run:hover { box-shadow: 0 0 28px #1565c080; }
+  .btn-run:disabled { background: #1a2d40; color: #3d5a7a; box-shadow: none; cursor: not-allowed; }
+
+  /* ── PROGRESS ── */
+  .progress-bar { height: 4px; background: #0b1828; border-radius: 2px; overflow: hidden; margin-top: 12px; }
+  .progress-fill { height: 100%; background: linear-gradient(90deg,#0d47a1,#42a5f5); transition: width .4s; border-radius: 2px; }
+  .progress-txt  { font-size: 11px; color: var(--text3); margin-top: 5px; }
+
+  /* ── FILTROS ── */
+  #filters { display: flex; flex-wrap: wrap; gap: 16px; align-items: flex-end; }
+  .filter-group { display: flex; flex-direction: column; gap: 5px; }
+  .filter-label { font-size: 10px; color: var(--text3); text-transform: uppercase; letter-spacing: 1px; }
+
+  /* ── STATS ── */
+  .stats-grid { display: grid; grid-template-columns: repeat(auto-fit,minmax(130px,1fr)); gap: 10px; margin-bottom: 20px; }
+  .stat-box { background: var(--bg2); border-radius: 12px; padding: 14px 16px; border: 1px solid var(--border); text-align: center; }
+  .stat-label { font-size: 9px; color: var(--text3); letter-spacing: 1px; text-transform: uppercase; }
+  .stat-val   { font-size: 24px; font-weight: 800; color: #deeeff; margin: 4px 0; font-family: var(--mono); }
+  .stat-sub   { font-size: 11px; color: #2a6090; }
+
+  /* ── GRID CARDS ── */
+  .cards-grid { display: grid; grid-template-columns: repeat(auto-fill,minmax(330px,1fr)); gap: 13px; }
+
+  /* ── STOCK CARD ── */
+  .stock-card {
+    background: linear-gradient(135deg,#070f1c,#0b1525);
+    border: 1.5px solid var(--border); border-radius: 18px; padding: 18px 20px;
+    cursor: pointer; position: relative; overflow: hidden;
+    transition: border-color .2s, box-shadow .2s;
+    animation: up .4s ease both;
+  }
+  .stock-card:hover { border-color: #1a3a60; }
+  .card-glow {
+    position: absolute; top: -40px; right: -40px; width: 130px; height: 130px;
+    border-radius: 50%; pointer-events: none;
+  }
+  .card-head { display: flex; justify-content: space-between; align-items: flex-start; gap: 10px; margin-bottom: 0; }
+  .card-left { flex: 1; min-width: 0; }
+  .card-ticker-row { display: flex; align-items: center; gap: 9px; margin-bottom: 3px; }
+  .ticker { font-family: var(--mono); font-size: 19px; font-weight: 700; color: #deeeff; letter-spacing: 2px; }
+  .rank-badge { font-size: 11px; border-radius: 6px; padding: 1px 7px; font-weight: 700; }
+  .card-name { font-size: 12px; color: var(--text3); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 200px; }
+  .card-cap  { font-size: 11px; color: #1a3a56; margin-top: 2px; }
+
+  /* Ring SVG */
+  .ring-wrap { display: flex; flex-direction: column; align-items: center; gap: 5px; }
+  .grade-tag { font-size: 9px; font-weight: 800; letter-spacing: 1.5px; border-radius: 5px; padding: 2px 8px; }
+
+  /* Price row */
+  .price-row { display: flex; align-items: baseline; gap: 10px; margin: 12px 0 14px; }
+  .price     { font-size: 24px; font-weight: 800; color: #deeeff; font-family: var(--mono); }
+  .change    { font-size: 13px; font-weight: 700; }
+
+  /* Pills */
+  .pills { display: flex; flex-wrap: wrap; gap: 6px; }
+  .pill  { border-radius: 9px; padding: 5px 10px; text-align: center; min-width: 72px; border-width: 1px; border-style: solid; }
+  .pill-lbl { font-size: 9px; letter-spacing: 1.1px; text-transform: uppercase; font-weight: 700; }
+  .pill-val { font-size: 15px; font-weight: 800; font-family: var(--mono); margin-top: 1px; }
+
+  /* Expanded */
+  .card-details { margin-top: 16px; padding-top: 16px; border-top: 1px solid #0f2035; animation: up .2s ease; }
+  .detail-grid  { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 12px; }
+  .detail-box   { background: #060e1a; border-radius: 10px; padding: 10px 12px; }
+  .detail-lbl   { font-size: 9px; color: var(--text3); text-transform: uppercase; letter-spacing: 1px; }
+  .detail-val   { font-size: 14px; font-weight: 700; color: var(--text); margin-top: 3px; }
+  .notes-box    { background: #060e1a; border-radius: 10px; padding: 12px 14px; }
+  .notes-title  { font-size: 9px; color: var(--text3); text-transform: uppercase; letter-spacing: 1px; margin-bottom: 8px; }
+  .note-item    { font-size: 12px; color: #7a9ab8; margin-bottom: 3px; }
+  .card-footer  { margin-top: 10px; font-size: 10px; color: var(--text3); text-align: right; }
+
+  /* ── VAZIO ── */
+  .empty { text-align: center; padding: 70px 20px; color: #0f2035; }
+  .empty-icon { font-size: 56px; margin-bottom: 14px; }
+  .empty-title { font-size: 17px; color: #1a3d5a; font-weight: 700; }
+  .empty-sub   { font-size: 13px; color: #0f2035; margin-top: 6px; }
+
+  /* ── METODOLOGIA ── */
+  .method-grid { display: grid; grid-template-columns: repeat(auto-fit,minmax(200px,1fr)); gap: 9px; }
+  .method-item { background: var(--bg); border-radius: 10px; padding: 11px 13px; border: 1px solid var(--border); }
+  .method-head { display: flex; gap: 8px; align-items: center; margin-bottom: 4px; }
+  .method-pts  { background: #0d47a1; color: var(--blue2); border-radius: 6px; padding: 1px 7px; font-size: 10px; font-weight: 700; font-family: var(--mono); }
+  .method-name { font-size: 13px; font-weight: 700; color: var(--text); }
+  .method-desc { font-size: 11px; color: var(--text3); }
+  .method-foot { margin-top: 14px; font-size: 11px; color: var(--text3); line-height: 1.7; border-top: 1px solid var(--border); padding-top: 12px; }
+
+  /* ── ERRO ── */
+  .err-box { margin-top: 10px; font-size: 12px; color: #7a4028; }
+
+  @keyframes up {
+    from { opacity: 0; transform: translateY(14px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="logo-box">📈</div>
+  <div>
+    <h1>ANALISADOR FUNDAMENTALISTA B3</h1>
+    <p>Fonte: <strong>Brapi.dev</strong> · Gratuito · Sem API key · Método Bazin + Graham + Barsi</p>
+  </div>
+</header>
+
+<main>
+  <!-- CONFIG -->
+  <div class="panel">
+    <div class="panel-title">⚙️ Lista de ações</div>
+    <div class="tags" id="tags"></div>
+    <div class="row">
+      <input type="text" id="ticker-input" placeholder="Adicionar ticker (ex: ITSA4)" maxlength="8"/>
+      <button class="btn btn-add" onclick="addTicker()">+ Add</button>
+      <button class="btn btn-run" id="btn-run" onclick="runAnalysis()">🚀 Iniciar Análise</button>
+    </div>
+    <div id="progress-wrap" style="display:none">
+      <div class="progress-bar"><div class="progress-fill" id="progress-fill" style="width:0%"></div></div>
+      <div class="progress-txt" id="progress-txt">Buscando...</div>
+    </div>
+    <div class="err-box" id="err-box"></div>
+  </div>
+
+  <!-- FILTROS -->
+  <div class="panel" id="filters-panel" style="display:none">
+    <div id="filters">
+      <div class="filter-group">
+        <span class="filter-label">Ordenar</span>
+        <select id="sort-by" onchange="renderCards()">
+          <option value="score">🏆 Score</option>
+          <option value="dy">💰 DY maior</option>
+          <option value="roe">📊 ROE maior</option>
+          <option value="pl">💲 P/L menor</option>
+          <option value="pvp">📚 P/VP menor</option>
+        </select>
+      </div>
+      <div class="filter-group">
+        <span class="filter-label">Filtrar</span>
+        <select id="filter-mode" onchange="renderCards()">
+          <option value="all">Todas</option>
+          <option value="good">✅ Score ≥65</option>
+          <option value="div">💰 DY ≥5%</option>
+          <option value="low">💲 P/L ≤15</option>
+        </select>
+      </div>
+      <div class="filter-group" style="flex:1;min-width:160px">
+        <span class="filter-label">DY mínimo: <span id="dy-val">0</span>%</span>
+        <input type="range" id="min-dy" min="0" max="12" step="0.5" value="0" oninput="document.getElementById('dy-val').textContent=this.value;renderCards()"/>
+      </div>
+    </div>
+  </div>
+
+  <!-- STATS -->
+  <div class="stats-grid" id="stats-grid" style="display:none"></div>
+
+  <!-- CARDS -->
+  <div class="cards-grid" id="cards-grid"></div>
+
+  <!-- VAZIO -->
+  <div class="empty" id="empty-state">
+    <div class="empty-icon">📊</div>
+    <div class="empty-title">Clique em "Iniciar Análise"</div>
+    <div class="empty-sub">Os dados virão da Brapi.dev — API brasileira gratuita, sem CORS, sem proxy</div>
+  </div>
+
+  <!-- METODOLOGIA -->
+  <div class="panel" style="margin-top:28px">
+    <div class="panel-title">📚 Como o score é calculado</div>
+    <div class="method-grid">
+      <div class="method-item">
+        <div class="method-head"><span class="method-pts">30pts</span><span class="method-name">Dividend Yield</span></div>
+        <div class="method-desc">≥8% excelente · ≥6% muito bom · ≥4% moderado (Bazin)</div>
+      </div>
+      <div class="method-item">
+        <div class="method-head"><span class="method-pts">20pts</span><span class="method-name">P/L</span></div>
+        <div class="method-desc">≤8 muito barato · ≤12 barato · ≤15 justo (Graham)</div>
+      </div>
+      <div class="method-item">
+        <div class="method-head"><span class="method-pts">20pts</span><span class="method-name">ROE</span></div>
+        <div class="method-desc">≥25% excepcional · ≥15% forte (Buffett)</div>
+      </div>
+      <div class="method-item">
+        <div class="method-head"><span class="method-pts">15pts</span><span class="method-name">P/VP</span></div>
+        <div class="method-desc">≤1 muito atrativo · ≤1.5 atrativo (Graham)</div>
+      </div>
+      <div class="method-item">
+        <div class="method-head"><span class="method-pts">10pts</span><span class="method-name">Margem Líquida</span></div>
+        <div class="method-desc">≥20% excelente · ≥10% boa</div>
+      </div>
+      <div class="method-item">
+        <div class="method-head"><span class="method-pts">+5pts</span><span class="method-name">LPA positivo</span></div>
+        <div class="method-desc">Empresa gerando lucro por ação</div>
+      </div>
+    </div>
+    <div class="method-foot">
+      Dados via <strong>brapi.dev</strong> (gratuito, B3 nativa). Esta análise é informativa — não é recomendação de investimento.
+    </div>
+  </div>
+</main>
+
+<script>
+// ── ESTADO ────────────────────────────────────────────────────────────────────
+let stocksData = [];
+let expandedCard = null;
+let errors = [];
+
+let tickerList = [
+  "PETR4","VALE3","ITUB4","BBDC4","BBAS3","WEGE3","EGIE3","TAEE11",
+  "CMIG4","CPLE6","KLBN11","SUZB3","FLRY3","TOTS3","VIVT3","TIMS3",
+  "SAPR11","SBSP3","HYPE3","LREN3","GGBR4","PRIO3","CSMG3","MDIA3",
+  "ENGI11","TRPL4","CMIN3","CSNA3","RDOR3","ITSA4"
+];
+
+// ── SCORE ────────────────────────────────────────────────────────────────────
+function calcScore(d) {
+  let score = 0; const notes = [];
+  const dy = d.dy ?? 0;
+  if (dy >= 8)      { score += 30; notes.push("✅ DY excelente (≥8%)"); }
+  else if (dy >= 6) { score += 24; notes.push("✅ DY muito bom (≥6%)"); }
+  else if (dy >= 4) { score += 15; notes.push("⚠️ DY moderado (≥4%)"); }
+  else if (dy >= 2) { score += 7;  notes.push("⚠️ DY baixo (≥2%)"); }
+  else              {              notes.push("❌ DY muito baixo"); }
+
+  const pl = d.pl;
+  if (pl !== null && pl > 0) {
+    if (pl <= 8)       { score += 20; notes.push("✅ P/L muito barato (≤8)"); }
+    else if (pl <= 12) { score += 16; notes.push("✅ P/L barato (≤12)"); }
+    else if (pl <= 15) { score += 10; notes.push("⚠️ P/L justo (≤15)"); }
+    else if (pl <= 25) { score += 4;  notes.push("⚠️ P/L caro (≤25)"); }
+    else               {              notes.push("❌ P/L muito caro"); }
+  } else if (pl !== null && pl < 0) {
+    notes.push("❌ P/L negativo (prejuízo)");
+  }
+
+  const roe = d.roe ?? 0;
+  if (roe >= 25)      { score += 20; notes.push("✅ ROE excepcional (≥25%)"); }
+  else if (roe >= 15) { score += 15; notes.push("✅ ROE forte (≥15%)"); }
+  else if (roe >= 10) { score += 8;  notes.push("⚠️ ROE aceitável (≥10%)"); }
+  else if (roe > 0)   { score += 3;  notes.push("❌ ROE fraco"); }
+  else                {              notes.push("❌ Retorno negativo"); }
+
+  const pvp = d.pvp;
+  if (pvp !== null) {
+    if (pvp <= 1)        { score += 15; notes.push("✅ P/VP muito atrativo (≤1)"); }
+    else if (pvp <= 1.5) { score += 12; notes.push("✅ P/VP atrativo (≤1.5)"); }
+    else if (pvp <= 2.5) { score += 6;  notes.push("⚠️ P/VP razoável (≤2.5)"); }
+    else                 {              notes.push("❌ P/VP caro"); }
+  }
+
+  const ml = d.margemLiquida ?? 0;
+  if (ml >= 20)      { score += 10; notes.push("✅ Margem líquida excelente"); }
+  else if (ml >= 10) { score += 7;  notes.push("✅ Margem líquida boa"); }
+  else if (ml >= 5)  { score += 4;  notes.push("⚠️ Margem líquida ok"); }
+  else if (ml > 0)   { score += 1;  notes.push("❌ Margem líquida baixa"); }
+  else               {              notes.push("❌ Empresa dando prejuízo"); }
+
+  if ((d.lpa ?? 0) > 0) { score += 5; notes.push("✅ Lucro por ação positivo"); }
+
+  return { score: Math.min(score, 100), notes };
+}
+
+function gradeOf(score) {
+  if (score >= 80) return { label:"EXCELENTE", color:"#00e676", bg:"#00e67618" };
+  if (score >= 65) return { label:"BOM",        color:"#69f0ae", bg:"#69f0ae18" };
+  if (score >= 45) return { label:"REGULAR",    color:"#ffd740", bg:"#ffd74018" };
+  if (score >= 25) return { label:"FRACO",      color:"#ff6d00", bg:"#ff6d0018" };
+  return                   { label:"EVITAR",    color:"#ff1744", bg:"#ff174418" };
+}
+
+// ── FORMATADORES ─────────────────────────────────────────────────────────────
+const fmt  = (v, d=2) => (v !== null && v !== undefined) ? Number(v).toFixed(d) : "—";
+const fmtP = v => (v !== null && v !== undefined) ? `${Number(v).toFixed(1)}%` : "—";
+const fmtC = v => {
+  if (!v) return "—";
+  if (v >= 1e12) return `R$${(v/1e12).toFixed(1)}T`;
+  if (v >= 1e9)  return `R$${(v/1e9).toFixed(1)}B`;
+  if (v >= 1e6)  return `R$${(v/1e6).toFixed(0)}M`;
+  return `R$${v}`;
+};
+
+function pillColor(key, v) {
+  const n = parseFloat(v);
+  if (isNaN(n)) return "#4a6080";
+  if (key==="dy")  return n>=6?"#00e676":n>=3?"#ffd740":"#ff5252";
+  if (key==="roe") return n>=15?"#00e676":n>=8?"#ffd740":"#ff5252";
+  if (key==="pl")  return (n>0&&n<=12)?"#00e676":(n<=20)?"#ffd740":"#ff5252";
+  if (key==="pvp") return n<=1.5?"#00e676":n<=3?"#ffd740":"#ff5252";
+  if (key==="ml")  return n>=10?"#00e676":n>=5?"#ffd740":"#ff5252";
+  if (key==="lpa") return n>0?"#00e676":"#ff5252";
+  return "#4a6080";
+}
+
+function pillHTML(label, value, key) {
+  const c = pillColor(key, value);
+  return `<div class="pill" style="background:${c}12;border-color:${c}35">
+    <div class="pill-lbl" style="color:${c}">${label}</div>
+    <div class="pill-val" style="color:${c}">${value}</div>
+  </div>`;
+}
+
+function ringHTML(score) {
+  const { label, color } = gradeOf(score);
+  const r = 30, circ = 2 * Math.PI * r, dash = (score / 100) * circ;
+  return `<div class="ring-wrap">
+    <svg width="74" height="74" viewBox="0 0 74 74">
+      <circle cx="37" cy="37" r="${r}" fill="none" stroke="#0d1a2a" stroke-width="7"/>
+      <circle cx="37" cy="37" r="${r}" fill="none" stroke="${color}" stroke-width="7"
+        stroke-dasharray="${dash} ${circ}" stroke-linecap="round"
+        transform="rotate(-90 37 37)"
+        style="filter:drop-shadow(0 0 5px ${color}90)"/>
+      <text x="37" y="42" text-anchor="middle" fill="${color}"
+        style="font-size:17px;font-weight:800;font-family:'IBM Plex Mono',monospace">${score}</text>
+    </svg>
+    <span class="grade-tag" style="color:${color};background:${color}18">${label}</span>
+  </div>`;
+}
+
+// ── FETCH BRAPI ───────────────────────────────────────────────────────────────
+async function fetchBatch(tickers) {
+  const url = `https://brapi.dev/api/quote/${tickers.join(",")}?fundamental=true&dividends=true`;
+  const res = await fetch(url);
+  if (!res.ok) throw new Error(`HTTP ${res.status}`);
+  const json = await res.json();
+  return json.results ?? [];
+}
+
+function parseStock(r) {
+  return {
+    symbol:        r.symbol,
+    name:          r.shortName || r.longName || r.symbol,
+    price:         r.regularMarketPrice ?? null,
+    change:        r.regularMarketChangePercent ?? null,
+    marketCap:     r.marketCap ?? null,
+    dy:            r.dividendYield ?? null,
+    pl:            r.priceEarnings ?? null,
+    pvp:           r.priceToBook ?? null,
+    roe:           r.summaryProfile?.returnOnEquity
+                     ? r.summaryProfile.returnOnEquity * 100
+                     : (r.defaultKeyStatistics?.returnOnEquity?.raw ?? null),
+    lpa:           r.earningsPerShare ?? null,
+    vpa:           r.bookValuePerShare ?? null,
+    margemLiquida: r.profitMargin ? r.profitMargin * 100 : null,
+    sector:        r.summaryProfile?.sector ?? null,
+    logo:          r.logourl ?? null,
+  };
+}
+
+// ── ANÁLISE PRINCIPAL ────────────────────────────────────────────────────────
+async function runAnalysis() {
+  stocksData = []; errors = [];
+  expandedCard = null;
+  document.getElementById("cards-grid").innerHTML = "";
+  document.getElementById("empty-state").style.display = "none";
+  document.getElementById("err-box").textContent = "";
+
+  const btn = document.getElementById("btn-run");
+  btn.disabled = true;
+  document.getElementById("progress-wrap").style.display = "block";
+  document.getElementById("filters-panel").style.display = "none";
+  document.getElementById("stats-grid").style.display = "none";
+
+  const total = tickerList.length;
+  let done = 0;
+
+  const BATCH = 10;
+  for (let i = 0; i < tickerList.length; i += BATCH) {
+    const batch = tickerList.slice(i, i + BATCH);
+    try {
+      const raw = await fetchBatch(batch);
+      const got = raw.map(r => r.symbol);
+      for (const t of batch) if (!got.includes(t)) errors.push(t);
+      for (const r of raw) {
+        try { stocksData.push(parseStock(r)); } catch(e) { errors.push(r.symbol); }
+      }
+    } catch(e) {
+      errors.push(...batch);
+    }
+    done = Math.min(i + BATCH, total);
+    const pct = Math.round((done / total) * 100);
+    document.getElementById("progress-fill").style.width = pct + "%";
+    document.getElementById("progress-txt").textContent = `Buscando via Brapi.dev... ${done}/${total} ações (${pct}%)`;
+    renderCards();
+    if (i + BATCH < tickerList.length) await new Promise(r => setTimeout(r, 600));
+  }
+
+  document.getElementById("progress-wrap").style.display = "none";
+  btn.disabled = false;
+
+  if (errors.length) {
+    document.getElementById("err-box").textContent = `⚠️ Não retornados: ${errors.join(", ")}`;
+  }
+
+  document.getElementById("filters-panel").style.display = "block";
+  renderStats();
+  renderCards();
+}
+
+// ── RENDER STATS ──────────────────────────────────────────────────────────────
+function renderStats() {
+  if (!stocksData.length) return;
+  const avgScore = Math.round(stocksData.reduce((s,x)=>s+calcScore(x).score,0)/stocksData.length);
+  const goodCnt  = stocksData.filter(s=>calcScore(s).score>=65).length;
+  const topDY    = [...stocksData].sort((a,b)=>(b.dy??0)-(a.dy??0))[0];
+  const grid = document.getElementById("stats-grid");
+  grid.style.display = "grid";
+  grid.innerHTML = [
+    { l:"Analisadas",  v: stocksData.length },
+    { l:"Score médio", v: avgScore },
+    { l:"Score ≥ 65",  v: goodCnt },
+    { l:"Melhor DY",   v: topDY ? `${(topDY.dy??0).toFixed(1)}%` : "—", sub: topDY?.symbol },
+  ].map(({ l, v, sub }) => `
+    <div class="stat-box">
+      <div class="stat-label">${l}</div>
+      <div class="stat-val">${v}</div>
+      ${sub ? `<div class="stat-sub">${sub}</div>` : ""}
+    </div>`).join("");
+}
+
+// ── RENDER CARDS ─────────────────────────────────────────────────────────────
+function renderCards() {
+  const sortBy     = document.getElementById("sort-by")?.value || "score";
+  const filterMode = document.getElementById("filter-mode")?.value || "all";
+  const minDY      = parseFloat(document.getElementById("min-dy")?.value || 0);
+
+  let filtered = stocksData.filter(s => {
+    if (filterMode === "good" && calcScore(s).score < 65) return false;
+    if (filterMode === "div"  && (s.dy ?? 0) < 5)         return false;
+    if (filterMode === "low"  && (s.pl ?? 999) > 15)       return false;
+    if ((s.dy ?? 0) < minDY) return false;
+    return true;
+  });
+
+  filtered.sort((a, b) => {
+    if (sortBy === "score") return calcScore(b).score - calcScore(a).score;
+    if (sortBy === "dy")    return (b.dy ?? 0) - (a.dy ?? 0);
+    if (sortBy === "roe")   return (b.roe ?? 0) - (a.roe ?? 0);
+    if (sortBy === "pl") {
+      const ap = (a.pl??0)>0?a.pl:9999, bp = (b.pl??0)>0?b.pl:9999;
+      return ap - bp;
+    }
+    if (sortBy === "pvp")   return (a.pvp ?? 999) - (b.pvp ?? 999);
+    return 0;
+  });
+
+  const grid = document.getElementById("cards-grid");
+  grid.innerHTML = filtered.map((s, i) => cardHTML(s, i + 1)).join("");
+
+  // re-attach expand listeners
+  grid.querySelectorAll(".stock-card").forEach(el => {
+    el.addEventListener("click", () => {
+      const sym = el.dataset.symbol;
+      expandedCard = expandedCard === sym ? null : sym;
+      renderCards();
+    });
+  });
+}
+
+function cardHTML(s, rank) {
+  const { score, notes } = calcScore(s);
+  const { color } = gradeOf(score);
+  const medal = rank===1?"🥇":rank===2?"🥈":rank===3?"🥉":`#${rank}`;
+  const open  = expandedCard === s.symbol;
+  const chColor = (s.change??0) >= 0 ? "#00e676" : "#ff5252";
+  const chSign  = (s.change??0) >= 0 ? "+" : "";
+  const delay   = `${Math.min(rank*0.04,0.5)}s`;
+
+  return `
+  <div class="stock-card" data-symbol="${s.symbol}"
+    style="border-color:${open?color+"70":"#0d1f33"};box-shadow:${open?`0 0 28px ${color}20`:"0 2px 14px #00000070"};animation-delay:${delay}">
+    <div class="card-glow" style="background:radial-gradient(circle,${color}14,transparent 70%)"></div>
+
+    <div class="card-head">
+      <div class="card-left">
+        <div class="card-ticker-row">
+          ${s.logo ? `<img src="${s.logo}" style="width:26px;height:26px;border-radius:6px;object-fit:contain;background:#0d1a2a;padding:2px" onerror="this.style.display='none'"/>` : ""}
+          <span class="ticker">${s.symbol}</span>
+          <span class="rank-badge" style="background:${color}22;color:${color}">${medal}</span>
+        </div>
+        <div class="card-name">${s.name}</div>
+        <div class="card-cap">${fmtC(s.marketCap)}</div>
+      </div>
+      ${ringHTML(score)}
+    </div>
+
+    <div class="price-row">
+      <span class="price">${s.price ? "R$ "+fmt(s.price,2) : "—"}</span>
+      ${s.change!==null ? `<span class="change" style="color:${chColor}">${chSign}${fmt(s.change,2)}%</span>` : ""}
+    </div>
+
+    <div class="pills">
+      ${pillHTML("DY 12m", fmtP(s.dy),            "dy")}
+      ${pillHTML("P/L",    fmt(s.pl,1),            "pl")}
+      ${pillHTML("P/VP",   fmt(s.pvp,2),           "pvp")}
+      ${pillHTML("ROE",    fmtP(s.roe),            "roe")}
+      ${pillHTML("LPA",    "R$"+fmt(s.lpa,2),      "lpa")}
+      ${pillHTML("Margem", fmtP(s.margemLiquida),  "ml")}
+    </div>
+
+    ${open ? `
+    <div class="card-details">
+      <div class="detail-grid">
+        <div class="detail-box">
+          <div class="detail-lbl">VPA</div>
+          <div class="detail-val">R$ ${fmt(s.vpa,2)}</div>
+        </div>
+        <div class="detail-box">
+          <div class="detail-lbl">Setor</div>
+          <div class="detail-val" style="font-size:12px">${s.sector||"—"}</div>
+        </div>
+      </div>
+      <div class="notes-box">
+        <div class="notes-title">Análise Fundamentalista</div>
+        ${notes.map(n=>`<div class="note-item">${n}</div>`).join("")}
+      </div>
+    </div>` : ""}
+
+    <div class="card-footer">${open?"▲ fechar":"▼ detalhes"}</div>
+  </div>`;
+}
+
+// ── TICKERS UI ────────────────────────────────────────────────────────────────
+function renderTags() {
+  document.getElementById("tags").innerHTML = tickerList.map(t => `
+    <div class="tag">
+      ${t}
+      <span class="tag-x" onclick="removeTicker('${t}')">×</span>
+    </div>`).join("");
+}
+
+function addTicker() {
+  const input = document.getElementById("ticker-input");
+  const t = input.value.trim().toUpperCase();
+  if (t && !tickerList.includes(t)) {
+    tickerList.push(t);
+    renderTags();
+  }
+  input.value = "";
+  input.focus();
+}
+
+function removeTicker(t) {
+  tickerList = tickerList.filter(x => x !== t);
+  renderTags();
+}
+
+// Enter key
+document.getElementById("ticker-input").addEventListener("keydown", e => {
+  if (e.key === "Enter") addTicker();
+});
+
+// Init
+renderTags();
+</script>
+</body>
+</html>
